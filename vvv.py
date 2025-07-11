@@ -2,6 +2,8 @@ import random
 import os
 import time
 import sys
+import tty
+import termios
 
 # Настройки
 WIDTH = 10
@@ -69,19 +71,43 @@ class Tetris:
         return True
 
     def display(self):
-        os.system('cls' if os.name == 'nt' else 'clear')
-        for row in self.board:
+        os.system('clear')  # Очистка экрана
+        # Создаем временное поле для отображения текущей фигуры
+        temp_board = [row[:] for row in self.board]
+        for y, row in enumerate(self.current_piece):
+            for x, cell in enumerate(row):
+                if cell:
+                    temp_y = self.current_y + y
+                    temp_x = self.current_x + x
+                    if temp_y >= 0:  # Не отображаем фигуру, если она выше игрового поля
+                        temp_board[temp_y][temp_x] = FILLED
+        for row in temp_board:
             print(' '.join(row))
         print(f"Current piece position: ({self.current_x}, {self.current_y})")
+
+    def getch(self):
+        fd = sys.stdin.fileno()
+        old_settings = termios.tcgetattr(fd)
+        try:
+            tty.setraw(sys.stdin.fileno())
+            ch = sys.stdin.read(1)
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+        return ch
+
+    def get_input(self):
+        key = self.getch()
+        if self.valid_position(dx=-1) and key == 'a':  # Влево
+            self.current_x -= 1
+        elif self.valid_position(dx=1) and key == 'd':  # Вправо
+            self.current_x += 1
+        elif key == 's':  # Вниз
+            self.drop_piece()
+        elif key == 'w':  # Поворот
+            self.rotate_piece()
 
 def main():
     game = Tetris()
     while True:
         game.display()
-        if not game.drop_piece():
-            print("Game Over!")
-            break
-        time.sleep(0.5)
-
-if __name__ == "__main__":
-    main()
+        game.get_input() 
